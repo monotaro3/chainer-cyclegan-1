@@ -14,7 +14,7 @@ class Deconvolution2DLayer(chainer.Chain):
         with self.init_scope():
             self.c = L.Deconvolution2D(ch0, ch1, ksize, stride, pad)
     def __call__(self, x):
-        h = F.pad(x, ((0,0),(0,0),(0,1),(0,1),'constant'))
+        h = F.pad(x, ((0,0),(0,0),(0,1),(0,1)),'constant')
         h = self.c(h)
         h = F.get_item(h, (slice(None),slice(None),slice(0,-1),slice(0,-1)))
         return h

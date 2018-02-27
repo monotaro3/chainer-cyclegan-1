@@ -8,11 +8,14 @@ import chainer.links as L
 from instance_norm_v2 import InstanceNormalization
 
 class Deconvolution2DLayer(chainer.Chain):
-    def __init__(self,ch0,ch1,ksize,stride,pad):
+    def __init__(self,ch0,ch1,ksize,stride,pad,initialW=None):
         super(Deconvolution2DLayer, self).__init__()
-        w = chainer.initializers.Normal(0.02)
+        if initialW == None:
+            w = chainer.initializers.Normal(0.02)
+        else:
+            w = initialW
         with self.init_scope():
-            self.c = L.Deconvolution2D(ch0, ch1, ksize, stride, pad)
+            self.c = L.Deconvolution2D(ch0, ch1, ksize, stride, pad,initialW=w)
     def __call__(self, x):
         h = F.pad(x, ((0,0),(0,0),(0,1),(0,1)),'constant')
         h = self.c(h)
@@ -111,6 +114,8 @@ class CBR(chainer.Chain):
                 self.c = L.Convolution2D(ch0, ch1, 7, 1, 3, initialW=w)
             elif sample == 'none-5':
                 self.c = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
+            elif sample == 'up':
+                self.c = Deconvolution2DLayer(ch0,ch1,3,2,1,initialW=w)
             else:
                 self.c = L.Convolution2D(ch0, ch1, ksize, 1, pad, initialW=w)
             if self.use_norm:
@@ -120,8 +125,9 @@ class CBR(chainer.Chain):
         if self.sample in ['down', 'none', 'none-9', 'none-7', 'none-5']:
             h = self.c(x)
         elif self.sample == 'up':
-            h = F.unpooling_2d(x, 2, 2, 0, cover_all=False)
-            h = self.c(h)
+            # h = F.unpooling_2d(x, 2, 2, 0, cover_all=False)
+            # h = self.c(h)
+            h = self.c(x)
         else:
             print('unknown sample method %s' % self.sample)
         if self.use_norm:

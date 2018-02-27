@@ -33,6 +33,6 @@ def compareCandP(ch0,ch1, batch, dshape):
     print(diff)
 
     print("diff == 0:")
-    print(diff == np.zeros(diff.shape).all())
+    print((diff == np.zeros(diff.shape)).all())
 
     #print((c_result == p_result).all())

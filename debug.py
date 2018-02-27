@@ -14,15 +14,15 @@ def compareCandP(ch0,ch1, batch, dshape):
 
     # w = np.random.rand(ch0,ch1,ksize,ksize)
     # b = np.random.rand(ch1)
-    w = np.random.randint(0,255,(ch0,ch1,ksize,ksize))
-    b = np.random.randint(0, 255, ch1)
+    w = np.random.randint(0,255,(ch0,ch1,ksize,ksize)).astype('f')
+    b = np.random.randint(0, 255, ch1).astype('f')
     chainer_dconv.c.W.data = w
     chainer_dconv.c.b.data = b
     pytorch_dconv.weight.data = torch.FloatTensor(w)
     pytorch_dconv.bias.data = torch.FloatTensor(b)
 
     # data = np.random.rand(batch, ch0, dshape[0],dshape[1])
-    data = np.random.randint(0,255, (batch, ch0, dshape[0],dshape[1]))
+    data = np.random.randint(0,255, (batch, ch0, dshape[0],dshape[1])).astype('f')
 
     c_result = chainer_dconv(Variable(data)).data
     p_result = pytorch_dconv(Variable_pt(torch.FloatTensor(data))).data.numpy()

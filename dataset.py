@@ -25,7 +25,9 @@ class Dataset(dataset_mixin.DatasetMixin):
     def get_example(self, i):
         img = read_image(self.get_img_path(i))
         img = img.astype('f')
-        img = img * 2 / 255.0 - 1.0  # [-1, 1)
+        #img = img * 2 / 255.0 - 1.0  # [-1, 1)
+        img /= 255
+        img = (img - 0.5) / 0.5
 
         img = resize(img, (self.resize_to, self.resize_to))
         if self.resize_to > self.crop_to:

@@ -8,7 +8,8 @@ from chainer import Variable
 
 def postprocess(var):
     img = var.data.get()
-    img = (img + 1.0) / 2.0  # [0, 1)
+    # img = (img + 1.0) / 2.0  # [0, 1)
+    img = (img * 0.5) + 0.5
     return img.transpose(0, 2, 3, 1)
 
 
@@ -19,7 +20,7 @@ def visualize(gen_g, gen_f, test_image_folder):
         batch_x = updater.get_iterator('main').next()
         batch_y = updater.get_iterator('train_B').next()
         batchsize = len(batch_x)
-        fig = plt.figure(figsize=(3, 2 * batchsize))
+        fig = plt.figure(figsize=(9, 6 * batchsize))
         gs = gridspec.GridSpec(2 * batchsize, 3, wspace=0.1, hspace=0.1)
 
         x = Variable(updater.converter(batch_x, updater.device))

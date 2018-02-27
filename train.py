@@ -199,7 +199,7 @@ def main():
 
     trainer.extend(
         visualize(gen_g, gen_f, args.vis_folder),
-        trigger=(1, 'epoch')
+        trigger=(1, 'iteration')
     )
 
     # Run the training

@@ -22,6 +22,6 @@ def compareCandP(ch0,ch1, batch, dshape):
     data = np.random.rand(batch, ch0, dshape[0],dshape[1])
 
     c_result = chainer_dconv(Variable(data)).data
-    p_result = pytorch_dconv(Variable_pt(data)).data.numpy()
+    p_result = pytorch_dconv(Variable_pt(torch.FloatTensor(data))).data.numpy()
 
     print((c_result == p_result).all())

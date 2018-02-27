@@ -1,6 +1,7 @@
 from net import Deconvolution2DLayer
 from chainer import Variable
 import numpy as np
+import torch
 import torch.nn as nn
 from torch.autograd import Variable as Variable_pt
 from chainer import Variable

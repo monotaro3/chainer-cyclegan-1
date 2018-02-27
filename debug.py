@@ -27,6 +27,12 @@ def compareCandP(ch0,ch1, batch, dshape):
     c_result = chainer_dconv(Variable(data)).data
     p_result = pytorch_dconv(Variable_pt(torch.FloatTensor(data))).data.numpy()
 
-    print(c_result - p_result)
+    diff = c_result - p_result
+
+    print('diff:')
+    print(diff)
+
+    print("diff == 0:")
+    print(diff == np.zeros(diff.shape))
 
     #print((c_result == p_result).all())

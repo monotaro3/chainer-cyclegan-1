@@ -7,6 +7,57 @@ import chainer.links as L
 # from instance_normalization import InstanceNormalization
 from instance_norm_v2 import InstanceNormalization
 
+class Deconvolution2DLayer(chainer.Chain):
+    def __init__(self,ch0,ch1,ksize,stride,pad):
+        super(Deconvolution2DLayer, self).__init__()
+        w = chainer.initializers.Normal(0.02)
+        with self.init_scope():
+            self.c = L.Deconvolution2D(ch0, ch1, ksize, stride, pad)
+    def call(self, x):
+        h = F.pad(x, ((0,0),(0,0),(0,1),(0,1),'constant'))
+        h = self.c(h)
+        h = F.get_item(h, (slice(None),slice(None),slice(0,-1),slice(0,-1)))
+        return h
+
+def reflectPad(x, pad):
+    if pad < 0:
+        print("Pad width has to be 0 or larger")
+        raise ValueError
+    if pad == 0:
+        return x
+    else:
+        width, height = x.shape[2:]
+        w_pad = h_pad = pad
+        if width == 1:
+            x = F.concat((x,)*(1+pad*2),axis=2)
+        else:
+            while w_pad > 0:
+                pad = min(w_pad, width-1)
+                w_pad -= pad
+                x = _pad_along_axis(x, pad, 2)
+                width, height = x.shape[2:]
+        if height == 1:
+            x = F.concat((x,)*(1+pad*2),axis=3)
+        else:
+            while h_pad > 0:
+                pad = min(h_pad, height-1)
+                h_pad -= pad
+                x = _pad_along_axis(x, pad, 3)
+                width, height = x.shape[2:]
+        return x
+
+def _pad_along_axis(x, pad, axis):
+    dim = x.ndim
+    head = F.get_item(x,(slice(None),) * axis + (slice(1, 1 + pad),) + (slice(None),)*(dim-1-axis))
+    head = F.concat(
+        [F.get_item(head, (slice(None),) * axis + (slice(i, i + 1),) + (slice(None),)*(dim-1-axis)) for i in range(pad)][::-1], axis=axis)
+    tail = F.get_item(x, (slice(None),) * axis + (slice(-1-pad, -1),) + (slice(None),)*(dim-1-axis))
+    tail = F.concat(
+        [F.get_item(tail, (slice(None),) * axis + (slice(i, i + 1),) + (slice(None),)*(dim-1-axis)) for i in range(pad)][::-1],
+        axis=axis)
+    x = F.concat((head, x, tail), axis=axis)
+    return x
+
 def get_norm_layer(norm='instance'):
     # unchecked: init weight of bn
     if norm == 'batch':

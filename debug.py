@@ -10,7 +10,7 @@ def compareCandP(ch0,ch1, batch, dshape):
     ksize, stride, pad = 3,2,1
 
     chainer_dconv = Deconvolution2DLayer(ch0,ch1,ksize,stride,pad)
-    pytorch_dconv = nn.ConvTranspose2d(ch0,ch1,ksize,stride,pad)
+    pytorch_dconv = nn.ConvTranspose2d(ch0,ch1,ksize,stride,pad,output_padding=1)
 
     w = np.random.rand(ch0,ch1,ksize,ksize)
     b = np.random.rand(ch1)

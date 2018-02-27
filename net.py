@@ -4,8 +4,8 @@ import chainer
 import chainer.functions as F
 import chainer.links as L
 
-from instance_normalization import InstanceNormalization
-
+# from instance_normalization import InstanceNormalization
+from instance_norm_v2 import InstanceNormalization
 
 def get_norm_layer(norm='instance'):
     # unchecked: init weight of bn
@@ -13,8 +13,8 @@ def get_norm_layer(norm='instance'):
         norm_layer = functools.partial(L.BatchNormalization, use_gamma=True,
                                        use_beta=True)
     elif norm == 'instance':
-        norm_layer = functools.partial(InstanceNormalization, use_gamma=False,
-                                       use_beta=False)
+        norm_layer = functools.partial(InstanceNormalization, use_gamma=True,
+                                       use_beta=True)
     else:
         raise NotImplementedError(
             'normalization layer [%s] is not found' % norm)

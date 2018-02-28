@@ -205,7 +205,7 @@ def main():
                 trigger=(100, 'iteration'), file_name='loss.png'))
 
     trainer.extend(
-        visualize(gen_g, gen_f, args.vis_folder),
+        visualize(gen_g, gen_f, os.path.join(args.out, args.vis_folder)),
         trigger=(1, 'iteration')
     )
 

@@ -3,7 +3,8 @@ import random
 import chainer
 import chainer.functions as F
 from chainer import Variable
-
+import numpy as np
+import six
 
 class ImagePool():
     def __init__(self, pool_size):
@@ -35,6 +36,60 @@ class ImagePool():
         return_images = xp.concatenate(return_images)
         return return_images
 
+class HistoricalBuffer():
+    def __init__(self, buffer_size=50, image_size=256, image_channels=3, gpu = -1):
+        self._buffer_size = buffer_size
+        self._img_size = image_size
+        self._img_ch = image_channels
+        self._cnt = 0
+        self.gpu = gpu
+        import numpy
+        import cupy
+        xp = numpy if gpu < 0 else cupy
+        self._buffer = xp.zeros((self._buffer_size, self._img_ch, self._img_size, self._img_size)).astype("f")
+
+    def query(self, data, prob=0.5):
+        if self._buffer_size == 0:
+            return data
+        xp = chainer.cuda.get_array_module(data)
+
+        if len(data) == 1:
+            if self._cnt < self._buffer_size:
+                self._buffer[self._cnt,:] = chainer.cuda.to_cpu(data[0,:]) if self.gpu == -1 else data[0,:]
+                self._cnt += 1
+                return data
+            else:
+                if np.random.rand() > prob:
+                    self._buffer[np.random.randint(self._cnt), :] = chainer.cuda.to_cpu(data[0,:]) if self.gpu == -1 else data[0,:]
+                    return data
+                else:
+                    return xp.expand_dims(xp.asarray(self._buffer[np.random.randint(self._cnt),:]),axis=0)
+        else:
+            use_buf = len(data) // 2
+            indices_rand = np.random.permutation(len(data))
+
+            avail_buf = min(self._cnt, use_buf)
+            if avail_buf > 0:
+                indices_use_buf = np.random.choice(self._cnt,avail_buf,replace=False)
+                data[indices_rand[-avail_buf:],:] = xp.asarray(self._buffer[indices_use_buf,:])
+            room_buf = self._buffer_size - self._cnt
+            n_replace_buf = min(self._cnt,len(data)-avail_buf-room_buf)
+            if n_replace_buf > 0:
+                indices_replace_buf = np.random.choice(self._cnt,n_replace_buf,replace=False)
+                self._buffer[indices_replace_buf,:] =  chainer.cuda.to_cpu(data[indices_rand[-avail_buf-n_replace_buf:-avail_buf],:]) \
+                    if self.gpu == -1 else data[indices_rand[-avail_buf-n_replace_buf:-avail_buf],:]
+            if room_buf > 0:
+                n_fill_buf = min(room_buf, len(data)-avail_buf)
+                self._buffer[self._cnt:self._cnt+n_fill_buf,:] = chainer.cuda.to_cpu(data[indices_rand[0:n_fill_buf],:]) \
+                    if self.gpu == -1 else data[indices_rand[0:n_fill_buf],:]
+                self._cnt += n_fill_buf
+            return data
+
+    def serialize(self, serializer):
+        self._cnt = serializer('cnt', self._cnt)
+        self.gpu = serializer('gpu', self.gpu)
+        self._buffer = serializer('buffer', self._buffer)
+
 
 class Updater(chainer.training.StandardUpdater):
     def __init__(self, *args, **kwargs):
@@ -47,12 +102,15 @@ class Updater(chainer.training.StandardUpdater):
         self._lrdecay_start = params['lrdecay_start']
         self._lrdecay_period = params['lrdecay_period']
         self._image_size = params['image_size']
+        self._max_buffer_size = params['buffer_size']
         self._dataset = params['dataset']
         self._batch_size = params['batch_size']
         self._iter = 0
         self.xp = self.gen_g.xp
-        self._buffer_x = ImagePool(50 * self._batch_size)
-        self._buffer_y = ImagePool(50 * self._batch_size)
+        # self._buffer_x = ImagePool(50 * self._batch_size)
+        # self._buffer_y = ImagePool(50 * self._batch_size)
+        self._buffer_x = HistoricalBuffer(self._max_buffer_size, self._image_size)
+        self._buffer_y = HistoricalBuffer(self._max_buffer_size, self._image_size)
         self.init_alpha = self.get_optimizer('gen_g').alpha
 
     def loss_func_rec_l1(self, x_out, t):
@@ -148,3 +206,17 @@ class Updater(chainer.training.StandardUpdater):
         if self._lambda_id > 0:
             chainer.report({'loss_id': loss_id_y}, self.gen_g)
             chainer.report({'loss_id': loss_id_x}, self.gen_f)
+
+    def serialize(self, serializer):
+        """Serializes the current state of the updater object."""
+        for name, iterator in six.iteritems(self._iterators):
+            iterator.serialize(serializer['iterator:' + name])
+
+        for name, optimizer in six.iteritems(self._optimizers):
+            optimizer.serialize(serializer['optimizer:' + name])
+            optimizer.target.serialize(serializer['model:' + name])
+
+        self.iteration = serializer('iteration', self.iteration)
+
+        self._buffer_x.serialize(serializer['buffer_x'])
+        self._buffer_y.serialize(serializer['buffer_y'])

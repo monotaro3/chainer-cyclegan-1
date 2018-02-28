@@ -62,6 +62,8 @@ def main():
     parser.add_argument('--lambda_identity', type=float, default=0.5,
                         help='lambda for l1 loss to stop unnecessary changes')
 
+    parser.add_argument("--buffer_size", type=int, default=50, help='size of buffer')
+
     parser.add_argument('--flip', type=int, default=1,
                         help='flip images for data augmentation')
     parser.add_argument('--resize_to', type=int, default=286,
@@ -168,6 +170,7 @@ def main():
             'lambda_identity': args.lambda_identity,
             'batch_size': args.batch_size,
             'image_size': args.crop_to,
+            'buffer_size': args.buffer_size,
             'lrdecay_start': args.lrdecay_start,
             'lrdecay_period': args.lrdecay_period,
             'dataset': train_A_dataset

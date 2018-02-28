@@ -7,11 +7,16 @@ import numpy as np
 import six
 
 class ImagePool():
-    def __init__(self, pool_size):
+    def __init__(self, pool_size, image_size=256, ch=3, gpu = -1):
         self.pool_size = pool_size
         if self.pool_size > 0:
             self.num_imgs = 0
-            self.images = []
+            # self.images = []
+            self.gpu = gpu
+            import numpy
+            import cupy
+            xp = numpy if gpu < 0 else cupy
+            self.images = xp.zeros((self.pool_size, ch, image_size, image_size)).astype("f")
 
     def query(self, images):
         if self.pool_size == 0:
@@ -19,22 +24,28 @@ class ImagePool():
         return_images = []
         xp = chainer.cuda.get_array_module(images)
         for image in images:
-            image = xp.expand_dims(image, axis=0)
+            # image = xp.expand_dims(image, axis=0)
             if self.num_imgs < self.pool_size:
+                self.images[self.num_imgs] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
                 self.num_imgs = self.num_imgs + 1
-                self.images.append(image)
+                # self.images.append(image)
                 return_images.append(image)
             else:
                 p = random.uniform(0, 1)
                 if p > 0.5:
                     random_id = random.randint(0, self.pool_size - 1)
-                    tmp = xp.copy(self.images[random_id])
-                    self.images[random_id] = image
+                    tmp = xp.array(chainer.cuda.to_cpu(self.images[random_id]))
+                    self.images[random_id] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
                     return_images.append(tmp)
                 else:
                     return_images.append(image)
-        return_images = xp.concatenate(return_images)
+        return_images = xp.stack(return_images)
         return return_images
+
+    def serialize(self, serializer):
+        self.gpu = serializer('gpu', self.gpu)
+        self.num_imgs = serializer('num_imgs', self.num_imgs)
+        self.images = serializer('images', self.images)
 
 class HistoricalBuffer():
     def __init__(self, buffer_size=50, image_size=256, image_channels=3, gpu = -1):
@@ -107,10 +118,10 @@ class Updater(chainer.training.StandardUpdater):
         self._batch_size = params['batch_size']
         self._iter = 0
         self.xp = self.gen_g.xp
-        # self._buffer_x = ImagePool(50 * self._batch_size)
-        # self._buffer_y = ImagePool(50 * self._batch_size)
-        self._buffer_x = HistoricalBuffer(self._max_buffer_size, self._image_size)
-        self._buffer_y = HistoricalBuffer(self._max_buffer_size, self._image_size)
+        self._buffer_x = ImagePool(self._max_buffer_size, self._image_size)
+        self._buffer_y = ImagePool(self._max_buffer_size, self._image_size)
+        # self._buffer_x = HistoricalBuffer(self._max_buffer_size, self._image_size)
+        # self._buffer_y = HistoricalBuffer(self._max_buffer_size, self._image_size)
         self.init_alpha = self.get_optimizer('gen_g').alpha
 
     def loss_func_rec_l1(self, x_out, t):

@@ -105,8 +105,9 @@ def main():
         serializers.load_npz(args.load_dis_y_model, dis_y)
         print('Discriminator Y model loaded')
 
-    if not os.path.exists(args.vis_folder):
-        os.makedirs(args.vis_folder)
+    vis_folder = os.path.join(args.out, args.vis_folder)
+    if not os.path.exists(vis_folder):
+        os.makedirs(vis_folder)
 
     # select GPU
     if args.gpu >= 0:
@@ -205,7 +206,7 @@ def main():
                 trigger=(100, 'iteration'), file_name='loss.png'))
 
     trainer.extend(
-        visualize(gen_g, gen_f, os.path.join(args.out, args.vis_folder)),
+        visualize(gen_g, gen_f, vis_folder),
         trigger=(1, 'epoch')
     )
 

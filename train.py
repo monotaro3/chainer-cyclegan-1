@@ -54,7 +54,7 @@ def main():
                         help='weight for cycle loss (B -> A -> B)')
 
     # Note that this is different from original implementation
-    parser.add_argument('--lambda_identity', type=float, default=0.0,
+    parser.add_argument('--lambda_identity', type=float, default=0.5,
                         help='lambda for l1 loss to stop unnecessary changes')
 
     parser.add_argument('--flip', type=int, default=1,

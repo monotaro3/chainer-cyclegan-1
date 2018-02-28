@@ -132,7 +132,7 @@ class CBR(chainer.Chain):
                 self.norm = get_norm_layer(norm)(ch1)
 
     def __call__(self, x):
-        if self.sample in ['down', 'none', 'none-9', 'none-7', 'none-5']:
+        if self.sample in ['down', 'none', 'none-9', 'none-7', 'none-5','none-7_nopad']:
             h = self.c(x)
         elif self.sample == 'up':
             # h = F.unpooling_2d(x, 2, 2, 0, cover_all=False)

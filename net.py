@@ -76,20 +76,28 @@ def get_norm_layer(norm='instance'):
 
 
 class ResBlock(chainer.Chain):
-    def __init__(self, ch, norm='instance', activation=F.relu):
+    def __init__(self, ch, norm='instance', activation=F.relu, reflect=True):
         super(ResBlock, self).__init__()
         self.activation = activation
         w = chainer.initializers.Normal(0.02)
+        pad = 0 if reflect else 1
         with self.init_scope():
-            self.c0 = L.Convolution2D(ch, ch, 3, 1, 1, initialW=w)
-            self.c1 = L.Convolution2D(ch, ch, 3, 1, 1, initialW=w)
+            self.c0 = L.Convolution2D(ch, ch, 3, 1, pad, initialW=w)
+            self.c1 = L.Convolution2D(ch, ch, 3, 1, pad, initialW=w)
             self.norm0 = get_norm_layer(norm)(ch)
             self.norm1 = get_norm_layer(norm)(ch)
+            self.reflect = reflect
 
     def __call__(self, x):
-        h = self.c0(x)
+        if self.reflect:
+            h = reflectPad(x, 1)
+            h = self.c0(h)
+        else:
+            h = self.c0(x)
         h = self.norm0(h)
         h = self.activation(h)
+        if self.reflect:
+            h = reflectPad(h, 1)
         h = self.c1(h)
         h = self.norm1(h)
         return h + x
@@ -112,6 +120,8 @@ class CBR(chainer.Chain):
                 self.c = L.Convolution2D(ch0, ch1, 9, 1, 4, initialW=w)
             elif sample == 'none-7':
                 self.c = L.Convolution2D(ch0, ch1, 7, 1, 3, initialW=w)
+            elif sample == 'none-7_nopad':
+                self.c = L.Convolution2D(ch0, ch1, 7, 1, 0, initialW=w)
             elif sample == 'none-5':
                 self.c = L.Convolution2D(ch0, ch1, 5, 1, 2, initialW=w)
             elif sample == 'up':
@@ -140,30 +150,44 @@ class CBR(chainer.Chain):
 
 
 class Generator(chainer.Chain):
-    def __init__(self, norm='instance', n_resblock=9):
+    def __init__(self, norm='instance', n_resblock=9,reflect=True):
         super(Generator, self).__init__()
         self.n_resblock = n_resblock
         with self.init_scope():
             # nn.ReflectionPad2d in original
-            self.c1 = CBR(3, 32, norm=norm, sample='none-7')
+            if reflect:
+                self.c1 = CBR(3, 32, norm=norm, sample='none-7_nopad')
+            else:
+                self.c1 = CBR(3, 32, norm=norm, sample='none-7')
             self.c2 = CBR(32, 64, norm=norm, sample='down')
             self.c3 = CBR(64, 128, norm=norm, sample='down')
             for i in range(n_resblock):
-                setattr(self, 'c' + str(i + 4), ResBlock(128, norm=norm))
+                setattr(self, 'c' + str(i + 4), ResBlock(128, norm=norm, reflect = reflect))
             # nn.ConvTranspose2d in original
             setattr(self, 'c' + str(n_resblock + 4),
                     CBR(128, 64, norm=norm, sample='up'))
             setattr(self, 'c' + str(n_resblock + 5),
                     CBR(64, 32, norm=norm, sample='up'))
-            setattr(self, 'c' + str(n_resblock + 6),
-                    CBR(32, 3, norm=None, sample='none-7', activation=F.tanh))
+            if reflect:
+                setattr(self, 'c' + str(n_resblock + 6),
+                        CBR(32, 3, norm=None, sample='none-7_nopad', activation=F.tanh))
+            else:
+                setattr(self, 'c' + str(n_resblock + 6),
+                        CBR(32, 3, norm=None, sample='none-7', activation=F.tanh))
+            self.reflect = reflect
 
     def __call__(self, x):
-        h = self.c1(x)
-        for i in range(2, self.n_resblock + 7):
+        if self.reflect:
+            h = reflectPad(x,3)
+            h = self.c1(h)
+        else:
+            h = self.c1(x)
+        for i in range(2, self.n_resblock + 6):
             h = getattr(self, 'c' + str(i))(h)
+        if self.reflect:
+            h = reflectPad(h, 3)
+        h = getattr(self, 'c' + str(self.n_resblock + 6))(h)
         return h
-
 
 class Discriminator(chainer.Chain):
     def __init__(self, norm='instance', in_ch=3, n_down_layers=3):

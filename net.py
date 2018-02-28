@@ -103,10 +103,10 @@ class ResBlock(chainer.Chain):
         return h + x
 
 
-class CBR(chainer.Chain):
+class CNABlock(chainer.Chain):
     def __init__(self, ch0, ch1, ksize=3, pad=1, norm='instance',
                  sample='down', activation=F.relu, dropout=False):
-        super(CBR, self).__init__()
+        super(CNABlock, self).__init__()
         self.activation = activation
         self.dropout = dropout
         self.sample = sample
@@ -149,24 +149,24 @@ class Generator(chainer.Chain):
         with self.init_scope():
             # nn.ReflectionPad2d in original
             if reflect:
-                self.c1 = CBR(3, 32, norm=norm, sample='none-7_nopad')
+                self.c1 = CNABlock(3, 32, norm=norm, sample='none-7_nopad')
             else:
-                self.c1 = CBR(3, 32, norm=norm, sample='none-7')
-            self.c2 = CBR(32, 64, norm=norm, sample='down')
-            self.c3 = CBR(64, 128, norm=norm, sample='down')
+                self.c1 = CNABlock(3, 32, norm=norm, sample='none-7')
+            self.c2 = CNABlock(32, 64, norm=norm, sample='down')
+            self.c3 = CNABlock(64, 128, norm=norm, sample='down')
             for i in range(n_resblock):
                 setattr(self, 'c' + str(i + 4), ResBlock(128, norm=norm, reflect = reflect))
             # nn.ConvTranspose2d in original
             setattr(self, 'c' + str(n_resblock + 4),
-                    CBR(128, 64, norm=norm, sample='up'))
+                    CNABlock(128, 64, norm=norm, sample='up'))
             setattr(self, 'c' + str(n_resblock + 5),
-                    CBR(64, 32, norm=norm, sample='up'))
+                    CNABlock(64, 32, norm=norm, sample='up'))
             if reflect:
                 setattr(self, 'c' + str(n_resblock + 6),
-                        CBR(32, 3, norm=None, sample='none-7_nopad', activation=F.tanh))
+                        CNABlock(32, 3, norm=None, sample='none-7_nopad', activation=F.tanh))
             else:
                 setattr(self, 'c' + str(n_resblock + 6),
-                        CBR(32, 3, norm=None, sample='none-7', activation=F.tanh))
+                        CNABlock(32, 3, norm=None, sample='none-7', activation=F.tanh))
             self.reflect = reflect
 
     def __call__(self, x):
@@ -191,25 +191,25 @@ class Discriminator(chainer.Chain):
         self.n_down_layers = n_down_layers
 
         with self.init_scope():
-            self.c0 = CBR(in_ch, 64, ksize=ksize, pad=pad, norm=None,
-                          sample='down', activation=F.leaky_relu,
-                          dropout=False)
+            self.c0 = CNABlock(in_ch, 64, ksize=ksize, pad=pad, norm=None,
+                               sample='down', activation=F.leaky_relu,
+                               dropout=False)
 
             for i in range(1, n_down_layers):
                 setattr(self, 'c' + str(i),
-                        CBR(base, base * 2, ksize=ksize, pad=pad, norm=norm,
-                            sample='down', activation=F.leaky_relu,
-                            dropout=False))
+                        CNABlock(base, base * 2, ksize=ksize, pad=pad, norm=norm,
+                                 sample='down', activation=F.leaky_relu,
+                                 dropout=False))
                 base *= 2
 
             setattr(self, 'c' + str(n_down_layers),
-                    CBR(base, base * 2, ksize=ksize, pad=pad, norm=norm,
-                        sample='none', activation=F.leaky_relu, dropout=False))
+                    CNABlock(base, base * 2, ksize=ksize, pad=pad, norm=norm,
+                             sample='none', activation=F.leaky_relu, dropout=False))
             base *= 2
 
             setattr(self, 'c' + str(n_down_layers + 1),
-                    CBR(base, 1, ksize=ksize, pad=pad, norm=None,
-                        sample='none', activation=None, dropout=False))
+                    CNABlock(base, 1, ksize=ksize, pad=pad, norm=None,
+                             sample='none', activation=None, dropout=False))
 
     def __call__(self, x_0):
         h = self.c0(x_0)

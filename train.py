@@ -206,7 +206,7 @@ def main():
 
     trainer.extend(
         visualize(gen_g, gen_f, os.path.join(args.out, args.vis_folder)),
-        trigger=(1, 'iteration')
+        trigger=(1, 'epoch')
     )
 
     if args.resume:

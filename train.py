@@ -28,6 +28,11 @@ def main():
     parser.add_argument('--vis_folder', '-e', default='visualization',
                         help='Directory to output the visualization result')
 
+    parser.add_argument('--snapshot_interval', type=int, default=10000,
+                        help='Interval of model snapshot')
+
+    parser.add_argument("--resume", type=str, help='trainer snapshot to be resumed')
+
     parser.add_argument('--learning_rate_g', type=float, default=0.0002,
                         help='Learning rate for generator')
     parser.add_argument('--learning_rate_d', type=float, default=0.0002,
@@ -168,10 +173,10 @@ def main():
         })
 
     log_interval = (100, 'iteration')
-    model_save_interval = (10000, 'iteration')
-    out = os.path.join(args.out, dt.now().strftime('%m%d_%H%M'))
+    model_save_interval = (args.snapshot_interval, 'iteration')
+    # out = os.path.join(args.out, dt.now().strftime('%m%d_%H%M'))
     trainer = training.Trainer(updater, (
-        args.lrdecay_start + args.lrdecay_period, 'epoch'), out=out)
+        args.lrdecay_start + args.lrdecay_period, 'epoch'), out=args.out)
     trainer.extend(extensions.snapshot_object(
         gen_g, 'gen_g{.updater.iteration}.npz'), trigger=model_save_interval)
     trainer.extend(extensions.snapshot_object(
@@ -180,6 +185,8 @@ def main():
         dis_x, 'dis_x{.updater.iteration}.npz'), trigger=model_save_interval)
     trainer.extend(extensions.snapshot_object(
         dis_y, 'dis_y{.updater.iteration}.npz'), trigger=model_save_interval)
+
+    trainer.extend(extensions.snapshot(), trigger=model_save_interval)
 
     log_keys = ['epoch', 'iteration', 'gen_g/loss_cycle', 'gen_f/loss_cycle',
                 'gen_g/loss_id', 'gen_f/loss_id', 'gen_g/loss_gen',
@@ -201,6 +208,9 @@ def main():
         visualize(gen_g, gen_f, args.vis_folder),
         trigger=(1, 'iteration')
     )
+
+    if args.resume:
+        serializers.load_npz(args.resume, trainer)
 
     # Run the training
     trainer.run()

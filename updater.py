@@ -6,7 +6,7 @@ from chainer import Variable
 import numpy as np
 import six
 
-#stable version
+#stable version1
 # class ImagePool():
 #     def __init__(self, pool_size, image_size=256, ch=3, gpu = -1):
 #         self.pool_size = pool_size
@@ -48,6 +48,49 @@ import six
 #         self.num_imgs = serializer('num_imgs', self.num_imgs)
 #         self.images = serializer('images', self.images)
 
+#stable2
+# class ImagePool():
+#     def __init__(self, pool_size, image_size=256, ch=3, gpu = -1):
+#         self.pool_size = pool_size
+#         if self.pool_size > 0:
+#             self.num_imgs = 0
+#             # self.images = []
+#             self.gpu = gpu
+#             import numpy
+#             import cupy
+#             xp = numpy if gpu < 0 else cupy
+#             self.images = xp.zeros((self.pool_size, ch, image_size, image_size)).astype("f")
+#
+#     def query(self, images):
+#         if self.pool_size == 0:
+#             return images
+#         return_images = []
+#         xp = chainer.cuda.get_array_module(images)
+#         for image in images:
+#             # image = xp.expand_dims(image, axis=0)
+#             if self.num_imgs < self.pool_size:
+#                 self.images[self.num_imgs] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
+#                 self.num_imgs = self.num_imgs + 1
+#                 # self.images.append(image)
+#                 return_images.append(image)
+#             else:
+#                 p = random.uniform(0, 1)
+#                 if p > 0.5:
+#                     random_id = random.randint(0, self.pool_size - 1)
+#                     # tmp = xp.array(chainer.cuda.to_cpu(self.images[random_id]))
+#                     self.images[random_id] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
+#                     return_images.append(image)
+#                 else:
+#                     random_id = random.randint(0, self.pool_size - 1)
+#                     return_images.append(xp.asarray(self.images[random_id]))
+#         return_images = xp.stack(return_images)
+#         return return_images
+#
+#     def serialize(self, serializer):
+#         self.gpu = serializer('gpu', self.gpu)
+#         self.num_imgs = serializer('num_imgs', self.num_imgs)
+#         self.images = serializer('images', self.images)
+
 class ImagePool():
     def __init__(self, pool_size, image_size=256, ch=3, gpu = -1):
         self.pool_size = pool_size
@@ -65,30 +108,43 @@ class ImagePool():
             return images
         return_images = []
         xp = chainer.cuda.get_array_module(images)
-        for image in images:
+        fill_flag = False
+        replace_flag = np.zeros(len(images))
+        replace_flag[0:len(images)//2] = 1
+        replace_flag = replace_flag[np.random.permutation(len(images))]
+        replace_count = 0
+        replace_indices = np.random.permutation(len(self.pool_size))
+        pickbuf_count = 1
+
+        for i, image in enumerate(images):
             # image = xp.expand_dims(image, axis=0)
             if self.num_imgs < self.pool_size:
                 self.images[self.num_imgs] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
                 self.num_imgs = self.num_imgs + 1
                 # self.images.append(image)
                 return_images.append(image)
+                fill_flag = True
             else:
-                p = random.uniform(0, 1)
-                if p > 0.5:
-                    random_id = random.randint(0, self.pool_size - 1)
-                    # tmp = xp.array(chainer.cuda.to_cpu(self.images[random_id]))
-                    self.images[random_id] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
+                if fill_flag:
                     return_images.append(image)
                 else:
-                    random_id = random.randint(0, self.pool_size - 1)
-                    return_images.append(xp.asarray(self.images[random_id]))
+                    if replace_flag[i] == 1:
+                        random_id = replace_indices[replace_count]
+                        # tmp = xp.array(chainer.cuda.to_cpu(self.images[random_id]))
+                        self.images[random_id] = chainer.cuda.to_cpu(image) if self.gpu == -1 else image
+                        return_images.append(image)
+                        replace_count +=1
+                    else:
+                        random_id = replace_indices[-pickbuf_count]
+                        return_images.append(xp.asarray(self.images[random_id]))
+                        pickbuf_count += 1
         return_images = xp.stack(return_images)
         return return_images
 
     def serialize(self, serializer):
         self.gpu = serializer('gpu', self.gpu)
         self.num_imgs = serializer('num_imgs', self.num_imgs)
-        self.images = serializer('images', self.images)
+#         self.images = serializer('images', self.images)
 
 class HistoricalBuffer():
     def __init__(self, buffer_size=50, image_size=256, image_channels=3, gpu = -1):

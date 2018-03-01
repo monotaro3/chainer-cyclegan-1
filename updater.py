@@ -113,7 +113,7 @@ class ImagePool():
         replace_flag[0:len(images)//2] = 1
         replace_flag = replace_flag[np.random.permutation(len(images))]
         replace_count = 0
-        replace_indices = np.random.permutation(len(self.pool_size))
+        replace_indices = np.random.permutation(self.pool_size)
         pickbuf_count = 1
 
         for i, image in enumerate(images):

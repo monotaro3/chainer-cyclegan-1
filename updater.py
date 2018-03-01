@@ -81,7 +81,7 @@ class ImagePool():
                     return_images.append(image)
                 else:
                     random_id = random.randint(0, self.pool_size - 1)
-                    return_images.append(self.images[random_id])
+                    return_images.append(xp.asarray(self.images[random_id]))
         return_images = xp.stack(return_images)
         return return_images
 

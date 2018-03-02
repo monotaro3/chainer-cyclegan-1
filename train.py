@@ -141,9 +141,9 @@ def main():
 
     if args.batch_size > 1:
         train_A_iter = chainer.iterators.MultiprocessIterator(
-            train_A_dataset, args.batch_size, n_processes=3)
+            train_A_dataset, args.batch_size, n_processes=2)
         train_B_iter = chainer.iterators.MultiprocessIterator(
-            train_B_dataset, args.batch_size, n_processes=3)
+            train_B_dataset, args.batch_size, n_processes=2)
     else:
         train_A_iter = chainer.iterators.SerialIterator(
             train_A_dataset, args.batch_size)

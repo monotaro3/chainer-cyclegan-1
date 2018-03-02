@@ -299,6 +299,16 @@ class Updater(chainer.training.StandardUpdater):
         return F.mean_squared_error(y_fake, target)
 
     def update_core(self):
+        #debug
+        import tracemalloc
+        snapshot1 = tracemalloc.take_snapshot()
+        top_stats = snapshot1.statistics('lineno')
+        with open("tracemalloc_raw.log", 'a') as f:
+            print("[ Top 10 ]",file=f)
+            for stat in top_stats[:10]:
+                print(stat,file=f)
+
+
         opt_g = self.get_optimizer('gen_g')
         opt_f = self.get_optimizer('gen_f')
         opt_x = self.get_optimizer('dis_x')
@@ -373,6 +383,14 @@ class Updater(chainer.training.StandardUpdater):
         if self._lambda_id > 0:
             chainer.report({'loss_id': loss_id_y}, self.gen_g)
             chainer.report({'loss_id': loss_id_x}, self.gen_f)
+
+        #debug
+        snapshot2 = tracemalloc.take_snapshot()
+        top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+        with open("tracemalloc_diff.log",'a') as f:
+            print("[ Top 10 differences ]",file=f)
+            for stat in top_stats[:10]:
+                print(stat,file=f)
 
     def serialize(self, serializer):
         """Serializes the current state of the updater object."""

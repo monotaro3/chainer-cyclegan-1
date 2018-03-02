@@ -7,7 +7,7 @@ from chainer import Variable
 
 
 def postprocess(var):
-    img = var.data.get()
+    img = chainer.cuda.to_cpu(var.data)
     # img = (img + 1.0) / 2.0  # [0, 1)
     img = (img * 0.5) + 0.5
     return img.transpose(0, 2, 3, 1)

@@ -300,13 +300,13 @@ class Updater(chainer.training.StandardUpdater):
 
     def update_core(self):
         #debug
-        import tracemalloc
-        snapshot1 = tracemalloc.take_snapshot()
-        top_stats = snapshot1.statistics('lineno')
-        with open("tracemalloc_raw.log", 'a') as f:
-            print("[ Top 10 ]",file=f)
-            for stat in top_stats[:10]:
-                print(stat,file=f)
+        # import tracemalloc
+        # snapshot1 = tracemalloc.take_snapshot()
+        # top_stats = snapshot1.statistics('lineno')
+        # with open("tracemalloc_raw.log", 'a') as f:
+        #     print("[ Top 10 ]",file=f)
+        #     for stat in top_stats[:10]:
+        #         print(stat,file=f)
 
 
         opt_g = self.get_optimizer('gen_g')
@@ -385,12 +385,12 @@ class Updater(chainer.training.StandardUpdater):
             chainer.report({'loss_id': loss_id_x}, self.gen_f)
 
         #debug
-        snapshot2 = tracemalloc.take_snapshot()
-        top_stats = snapshot2.compare_to(snapshot1, 'lineno')
-        with open("tracemalloc_diff.log",'a') as f:
-            print("[ Top 10 differences ]",file=f)
-            for stat in top_stats[:10]:
-                print(stat,file=f)
+        # snapshot2 = tracemalloc.take_snapshot()
+        # top_stats = snapshot2.compare_to(snapshot1, 'lineno')
+        # with open("tracemalloc_diff.log",'a') as f:
+        #     print("[ Top 10 differences ]",file=f)
+        #     for stat in top_stats[:10]:
+        #         print(stat,file=f)
 
     def serialize(self, serializer):
         """Serializes the current state of the updater object."""

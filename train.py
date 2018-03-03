@@ -84,8 +84,8 @@ def main():
     root = args.root
 
     # debug
-    import tracemalloc
-    tracemalloc.start()
+    # import tracemalloc
+    # tracemalloc.start()
 
     if args.gpu >= 0:
         chainer.cuda.get_device_from_id(args.gpu).use()
